@@ -43,6 +43,21 @@ class MinimalService(Node):
 
     def perception_method(self):
         image = cv2.imread(image_path)
+        alto, ancho = imagen.shape[:2]
+        # Definir el ángulo de rotación
+        angulo = 270
+        # Calcular el nuevo tamaño de la imagen después de la rotación
+        nuevo_ancho = int(ancho * abs(np.cos(np.radians(angulo))) + alto * abs(np.sin(np.radians(angulo))))
+        nuevo_alto = int(alto * abs(np.cos(np.radians(angulo))) + ancho * abs(np.sin(np.radians(angulo))))
+        # Obtener la matriz de rotación utilizando la función getRotationMatrix2D
+        matriz_rotacion = cv2.getRotationMatrix2D((ancho / 2, alto / 2), angulo, 1)
+        # Ajustar la matriz de rotación para evitar bordes negros
+        matriz_rotacion[0, 2] += (nuevo_ancho - ancho) / 2
+        matriz_rotacion[1, 2] += (nuevo_alto - alto) / 2
+        # Aplicar la rotación a la imagen utilizando la función warpAffin
+        imagen_rotada = cv2.warpAffine(imagen, matriz_rotacion, (nuevo_ancho, nuevo_alto))
+        
+        imagen = imagen_rotada
 
         # Convertir la imagen a escala de grises
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
