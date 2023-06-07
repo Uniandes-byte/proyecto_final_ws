@@ -11,6 +11,7 @@ from rclpy.node import Node # Handles the creation of nodes
 from sensor_msgs.msg import Image # Image is the message type
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 import cv2 # OpenCV library
+from sensor_msgs.msg import CompressedImage
  
 class ImagePublisher(Node):
   """
@@ -54,7 +55,10 @@ class ImagePublisher(Node):
       # Publish the image.
       # The 'cv2_to_imgmsg' method converts an OpenCV
       # image to a ROS 2 image message
-      self.publisher_.publish(self.br.cv2_to_imgmsg(frame, encoding='rgb8'))
+      
+      compressed_imgmsg = self.br.cv2_to_compressed_imgmsg(frame, dst_format='jpg')
+      # Publish the compressed image
+      self.publisher_.publish(compressed_imgmsg)
 
  
     # Display the message on the console
