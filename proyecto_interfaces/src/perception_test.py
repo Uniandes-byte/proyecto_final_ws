@@ -8,6 +8,7 @@ from proyecto_interfaces.srv import StartPerceptionTest
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image # Image is the message type
 from proyecto_interfaces.msg import Banner
+from sensor_msgs.msg import CompressedImage
 
 bridge = CvBridge()
 image_path = "./src/proyecto_interfaces/resources/camera_image.jpeg"
@@ -147,7 +148,8 @@ class MinimalService(Node):
         res.figure=figura
         res.word=color
         res.color=texto
-        self.vision.publish(res)
+        compressed_img = bridge.cv2_to_compressed_imgmsg(image)
+        self.vision.publish(compressed_img)
 
 def main(args=None):
  
