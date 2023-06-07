@@ -6,9 +6,9 @@ import pytesseract
 from proyecto_interfaces.srv import StartPerceptionTest
 # ROS Image message -> OpenCV2 image converter
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image # Image is the message type
 from proyecto_interfaces.msg import Banner
 import numpy as np
+from sensor_msgs.msg import Image, CompressedImage
 
 bridge = CvBridge()
 image_path = "./src/proyecto_interfaces/resources/camera_image.jpeg"
@@ -19,7 +19,7 @@ class MinimalService(Node):
       
         self.start_perception_test = self.create_service(StartPerceptionTest, '/group_5/start_perception_test_srv', self.start_perception_test_callback)
         self.image_topic = self.create_subscription(
-            Image,
+            CompressedImage,  # Cambiar Image a CompressedImage
             'video_frames',
             self.image_topic_callback,
             1)
