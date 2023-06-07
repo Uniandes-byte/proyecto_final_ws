@@ -30,7 +30,7 @@ class MinimalService(Node):
         Plataforma = request.platform
         otra = "platform"
         if(Plataforma == "platform_1"):
-            ObjetivoY = 0.0
+            ObjetivoY = 0.1
             otra = "platform_2"
         elif(Plataforma == "platform_2"):
             otra = "platform_1"
@@ -84,7 +84,7 @@ class MinimalService(Node):
             otra = "platform_2"
         elif(Plataforma == "platform_2"):
             otra = "platform_1"
-            ObjetivoY = 0.0
+            ObjetivoY = 0.1
 
         # Resolver el sistema de ecuaciones
         initial_guess = [0, 0]  # Aproximación inicial de las variables x e y

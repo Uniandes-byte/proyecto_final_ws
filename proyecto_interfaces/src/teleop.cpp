@@ -21,7 +21,6 @@
 #endif
 /*Paquete que incluye el servicio de guardar el path*/
 /*Paquete para el mensaje de tipo float que almacena los datos de los movimientos ejecutados*/
-#include "turtle_bot_5/msg/float32_multi_array.hpp"
 
 /* Variables que asignan las teclas a usar para movimiento del robot*/
 static constexpr char KEYCODE_RIGHT = 0x43;
@@ -32,7 +31,6 @@ static constexpr char KEYCODE_Q = 0x71;
 
 bool running = true;
 /*Mensaje de tipo float usado para el txt que se guardara en el path*/
-turtle_bot_5::msg::Float32MultiArray res;
 
 
 class KeyboardReader final
@@ -187,25 +185,20 @@ public:
         angular = p_angular;
         /*Despues de asignar el cambio de valor,se introduce en el vector res un valor entre 1 a 4 identificado como el movimiento ejecutado*/
         /*los datos de res posteriormente van a ser procesados para identificar los movimientos hechos por el jugador*/
-        res.data.push_back(4);/*4 = izquierda*/
         break;
       case KEYCODE_RIGHT:
         angular = -p_angular;
-        res.data.push_back(3);/*3 = derecha*/
         break;
       case KEYCODE_UP:
         linear = p_linear;
-        res.data.push_back(1);/*1 = arriba*/
         break;
       case KEYCODE_DOWN:
         linear = -p_linear;
-        res.data.push_back(2);/*4 = abajo*/
         break;
       case KEYCODE_Q:
         running = false;
         break;
       default:
-        res.data.push_back(0);
         break;
       }
       /*E caso de que se este ejecutando los movimientos hechos por el jugador se hace lo siguiente:*/
@@ -268,10 +261,7 @@ int main(int argc, char **argv)
   /*Inicializa el nodo*/
   TurtleBotTeleop teleop_turtle(node);
   /*en caso de que halla algun valor en el vector por un evento anterior, se vuelve vacio nuevamente*/
-  res.data.clear();
   /*Los dos priemros valores en el txt van a ser los datos ingresados por el usuario de la velcidad lineal y angular*/
-  res.data.push_back(linear);
-  res.data.push_back(angular);
   /*Se ejecuta el bucle para la lectura de las teclas seleccionadas y posteriormente publicarlo en el topico cmvel*/
   teleop_turtle.keyLoop(linear, angular);
   /*Se crea el servicio de guardar el path*/

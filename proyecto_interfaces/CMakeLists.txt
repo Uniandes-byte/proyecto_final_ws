@@ -48,11 +48,6 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Install Python executables
-install(PROGRAMS
-  src/perception_rasp.py
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 # Install Python executables
 install(PROGRAMS

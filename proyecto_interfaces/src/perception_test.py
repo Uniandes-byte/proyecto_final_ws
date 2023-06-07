@@ -9,49 +9,17 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image,CompressedImage # Image is the message type
 from proyecto_interfaces.msg import Banner
 import numpy as np
+import os
+import easyocr
+from matplotlib import pyplot as plt
 
 bridge = CvBridge()
-image_path = "./src/proyecto_interfaces/resources/camera_image.jpeg"
 
 class MinimalService(Node):
     def __init__(self):
         super().__init__('minimal_service')
       
         self.start_perception_test = self.create_service(StartPerceptionTest, '/group_5/start_perception_test_srv', self.start_perception_test_callback)
-        self.image_topic = self.create_subscription(
-            CompressedImage,
-            'video_frames',
-            self.image_topic_callback,
-            1)
-        self.image_topic  # prevent unused variable warning
-
-    def image_topic_callback(self, msg):
-        compressed_data = msg.data
-        print("Received an image!")
-        with open(image_path, 'wb') as file:
-            file.write(compressed_data)
-        imagen = cv2.imread(image_path)
-        alto, ancho = imagen.shape[:2]
-        # Definir el ángulo de rotación
-        angulo = 270
-        # Calcular el nuevo tamaño de la imagen después de la rotación
-        nuevo_ancho = int(ancho * abs(np.cos(np.radians(angulo))) + alto * abs(np.sin(np.radians(angulo))))
-        nuevo_alto = int(alto * abs(np.cos(np.radians(angulo))) + ancho * abs(np.sin(np.radians(angulo))))
-        # Obtener la matriz de rotación utilizando la función getRotationMatrix2D
-        matriz_rotacion = cv2.getRotationMatrix2D((ancho / 2, alto / 2), angulo, 1)
-        # Ajustar la matriz de rotación para evitar bordes negros
-        matriz_rotacion[0, 2] += (nuevo_ancho - ancho) / 2
-        matriz_rotacion[1, 2] += (nuevo_alto - alto) / 2
-        # Aplicar la rotación a la imagen utilizando la función warpAffin
-        imagen_rotada = cv2.warpAffine(imagen, matriz_rotacion, (nuevo_ancho, nuevo_alto))
-
-        resize = cv2.resize(imagen_rotada, (54, 140))
-        #ancho = cv2_img.shape[1] #columnas
-        #alto = cv2_img.shape[0] # filas
-        # Rotación
-        #M = cv2.getRotationMatrix2D((ancho//2,alto//2),90,1)
-        #imageOut = cv2.warpAffine(cv2_img,M,(ancho,alto))
-        cv2.imwrite(image_path, imagen_rotada)
 
     def start_perception_test_callback(self, request, response):
         # Receive the request data and sum it
@@ -61,7 +29,7 @@ class MinimalService(Node):
         self.perception_method()
         return response
 
-    def get_color(hue_value):
+    def get_color(self, hue_value):
         colors = {
             (0, 5): "Rojo",
             (5, 20): "Naranja",
@@ -75,7 +43,7 @@ class MinimalService(Node):
                 return value
         return "Indefinido"
 
-    def get_figure(sides):
+    def get_figure(self, sides):
         figures = {
             3: "Triángulo",
             4: "Cuadrado o Rectángulo",
@@ -84,7 +52,9 @@ class MinimalService(Node):
         }
         return figures.get(sides, "Círculo")
     # define a video capture object
-        vid = cv2.VideoCapture(0)
+        
+    def perception_method(self):
+        vid = cv2.VideoCapture('http://192.168.177.210:8080/video'  )
         while True:
 
             # Capture the video frame
@@ -103,7 +73,7 @@ class MinimalService(Node):
             pixel_center = hsv_image[cy, cx]
             hue_value = pixel_center[0]
 
-            color = get_color(hue_value)
+            color = self.get_color(hue_value)
 
             # Detectar contornos
             edges = cv2.Canny(gray, 200, 750)
@@ -115,22 +85,22 @@ class MinimalService(Node):
                 if area < 3500:
                     continue
 
-            approx = cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)
-            sides = len(approx)
-            cv2.drawContours(frame, [approx], 0, (0, 255, 0), 2)
-            x = approx.ravel()[0]
-            y = approx.ravel()[1] - 10
-            figure_name = get_figure(sides)
-            cv2.putText(frame, figure_name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            figura = figure_name
+                approx = cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)
+                sides = len(approx)
+                cv2.drawContours(frame, [approx], 0, (0, 255, 0), 2)
+                x = approx.ravel()[0]
+                y = approx.ravel()[1] - 10
+                figure_name = self.get_figure(sides)
+                cv2.putText(frame, figure_name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                figura = figure_name
             #Aplicar OCR al frame
-            texto = pytesseract.image_to_string(gray)
+            #texto = pytesseract.image_to_string(gray)
             #print("Texto extraído:", texto)
 
             #Mostrar resultados en pantalla
             cv2.putText(frame, "Figura: " + figura, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             cv2.putText(frame, "Color: " + color, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            cv2.putText(frame, "Texto: " + texto, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            #cv2.putText(frame, "Texto: " + texto, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
             # Display the resulting frame
             cv2.imshow('frame', frame)
