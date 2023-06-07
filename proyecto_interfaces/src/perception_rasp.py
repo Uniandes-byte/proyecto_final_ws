@@ -8,7 +8,7 @@
 # Import the necessary libraries
 import rclpy # Python Client Library for ROS 2
 from rclpy.node import Node # Handles the creation of nodes
-from sensor_msgs.msg import Image # Image is the message type
+from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 import cv2 # OpenCV library
 from sensor_msgs.msg import CompressedImage
@@ -28,7 +28,7 @@ class ImagePublisher(Node):
       
     # Create the publisher. This publisher will publish an Image
     # to the video_frames topic. The queue size is 10 messages.
-    self.publisher_ = self.create_publisher(Image, 'video_frames', 1)
+    self.publisher_ = self.create_publisher(CompressedImage, 'video_frames', 1)
       
     # We will publish a message every 0.1 seconds
     timer_period = 5  # seconds
@@ -54,13 +54,16 @@ class ImagePublisher(Node):
     ret, frame = self.cap.read()
           
     if ret == True:
-      # Publish the image.
-      # The 'cv2_to_imgmsg' method converts an OpenCV
-      # image to a ROS 2 image message
-      
-      compressed_imgmsg = self.br.cv2_to_compressed_imgmsg(frame, dst_format='jpg')
+      # Compress the image as JPEG with lower quality
+      encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+      _, jpeg_data = cv2.imencode('.jpg', frame, encode_param)
+      # Create a CompressedImage message
+      msg = CompressedImage()
+      msg.header.stamp = self.get_clock().now().to_msg()
+      msg.format = "jpeg"
+      msg.data = np.array(jpeg_data).tostring()
       # Publish the compressed image
-      self.publisher_.publish(compressed_imgmsg)
+      self.publisher_.publish(msg)
 
  
     # Display the message on the console
