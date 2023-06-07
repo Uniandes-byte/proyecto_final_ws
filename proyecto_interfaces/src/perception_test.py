@@ -6,7 +6,7 @@ import pytesseract
 from proyecto_interfaces.srv import StartPerceptionTest
 # ROS Image message -> OpenCV2 image converter
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image # Image is the message type
+from sensor_msgs.msg import Image,CompressedImage # Image is the message type
 from proyecto_interfaces.msg import Banner
 import numpy as np
 
@@ -19,15 +19,18 @@ class MinimalService(Node):
       
         self.start_perception_test = self.create_service(StartPerceptionTest, '/group_5/start_perception_test_srv', self.start_perception_test_callback)
         self.image_topic = self.create_subscription(
-            Image,
+            CompressedImage,
             'video_frames',
             self.image_topic_callback,
             1)
         self.image_topic  # prevent unused variable warning
 
     def image_topic_callback(self, msg):
+        compressed_data = msg.data
         print("Received an image!")
-        imagen = bridge.imgmsg_to_cv2(msg, "rgb8")
+        with open(image_path, 'wb') as file:
+            file.write(compressed_data)
+        imagen = cv2.imread(image_path)
         alto, ancho = imagen.shape[:2]
         # Definir el ángulo de rotación
         angulo = 270
@@ -42,7 +45,7 @@ class MinimalService(Node):
         # Aplicar la rotación a la imagen utilizando la función warpAffin
         imagen_rotada = cv2.warpAffine(imagen, matriz_rotacion, (nuevo_ancho, nuevo_alto))
 
-        #resize = cv2.resize(cv2_img, (54, 140))
+        resize = cv2.resize(imagen_rotada, (54, 140))
         #ancho = cv2_img.shape[1] #columnas
         #alto = cv2_img.shape[0] # filas
         # Rotación
@@ -58,103 +61,86 @@ class MinimalService(Node):
         self.perception_method()
         return response
 
-    def perception_method(self):
-        image = cv2.imread(image_path)
+    def get_color(hue_value):
+        colors = {
+            (0, 5): "Rojo",
+            (5, 20): "Naranja",
+            (20, 33): "Amarillo",
+            (33, 78): "Verde",
+            (78, 131): "Azul",
+            (131, 170): "Morado"
+        }
+        for key, value in colors.items():
+            if key[0] <= hue_value < key[1]:
+                return value
+        return "Indefinido"
 
-        # Convertir la imagen a escala de grises
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Convertir la imagen a espacio de color HSV
-        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    def get_figure(sides):
+        figures = {
+            3: "Triángulo",
+            4: "Cuadrado o Rectángulo",
+            5: "Pentágono",
+            6: "Hexágono"
+        }
+        return figures.get(sides, "Círculo")
+    # define a video capture object
+        vid = cv2.VideoCapture(0)
+        while True:
 
-        # Obtener las dimensiones de la imagen
-        height, width, _ = image.shape
+            # Capture the video frame
+            # by frame
+            ret, frame = vid.read()
+            #Convertir a escala de grises
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Calcular las coordenadas del centro de la imagen
-        cx = int(50 * width / 100)
-        cy = int(80 * height / 100)
-        # Obtener el valor de tonalidad (hue) del píxel central
-        pixel_center = hsv_image[cy, cx]
-        hue_value = pixel_center[0]
+            # Convertir a espacio de color HSV
+            hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        # Determinar el color basado en el valor de tonalidad
-        color = "Indefinido"
-        if hue_value < 5:
-            color = "Rojo"
-        elif hue_value < 20:
-            color = "Naranja"
-        elif hue_value < 33:
-            color = "Amarillo"
-        elif hue_value < 78:
-            color = "Verde"
-        elif hue_value < 131:
-            color = "Azul"
-        elif hue_value < 170:
-            color = "Morado"
+            # Obtener dimensiones del frame
+            height, width, _ = frame.shape
+            cx = int(50 * width / 100)
+            cy = int(80 * height / 100)
+            pixel_center = hsv_image[cy, cx]
+            hue_value = pixel_center[0]
 
-        # Mostrar el valor del píxel central
-        print("Valor del píxel central:", pixel_center)
+            color = get_color(hue_value)
 
-        # Convertir la imagen a escala de grises
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # Detectar contornos
+            edges = cv2.Canny(gray, 200, 750)
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            figura = "Indefinido"
 
-        texto = pytesseract.image_to_string(gray)
-        print("texo " + texto)
-        # Aplicar detección de bordes utilizando Canny
-        edges = cv2.Canny(gray, 200, 750)
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area < 3500:
+                    continue
 
-        # Encontrar contornos en los bordes
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print(contours)
-
-        # Iterar sobre los contornos encontrados
-        figura="Indefinido"
-        for contour in contours:
-            area = cv2.contourArea(contour)
-
-            # Filtrar contornos con un área menor que el umbral deseado
-            if area < 3000:
-                continueMinimalService()
-
-            # Aproximar el contorno a una forma más simple
             approx = cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)
-
-            # Obtener el número de lados de la figura
             sides = len(approx)
-
-            # Dibujar un contorno alrededor de la figura identificada
-            cv2.drawContours(image, [approx], 0, (0, 255, 0), 2)
-
-            # Mostrar el número de lados cerca de la figura identificada
+            cv2.drawContours(frame, [approx], 0, (0, 255, 0), 2)
             x = approx.ravel()[0]
             y = approx.ravel()[1] - 10
-            if sides == 3:
-                cv2.putText(image,"Triangle", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                figura="Triangulo"
-            elif sides == 4:
-                x, y, w, h = cv2.boundingRect(approx)
-                aspect_ratio = float(w) / h
-                if aspect_ratio >= 0.95 and aspect_ratio <= 1.05:
-                    cv2.putText(image, "Square", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    figura="Cuadrado"
-                else:
-                    cv2.putText(image, "Rectangle", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    figura="Rectangulo"
-            elif sides == 5:
-                cv2.putText(image, "Pentagon", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                figura="Pentagono"
-            elif sides == 6:
-                cv2.putText(image, "Hexagon", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                figura="Hexagono"
-            else:
-                cv2.putText(image, "Circle", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                figura="Circulo"
+            figure_name = get_figure(sides)
+            cv2.putText(frame, figure_name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            figura = figure_name
+            #Aplicar OCR al frame
+            texto = pytesseract.image_to_string(gray)
+            #print("Texto extraído:", texto)
 
-        # Dibujar el nombre del color en la imagen
-        cv2.putText(image, color, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            #Mostrar resultados en pantalla
+            cv2.putText(frame, "Figura: " + figura, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, "Color: " + color, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            cv2.putText(frame, "Texto: " + texto, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-        # Mostrar la imagen resultante con figuras, texto y color
-        cv2.imshow("Image", image)
-        cv2.waitKey(0)
+            # Display the resulting frame
+            cv2.imshow('frame', frame)
+
+            # the 'q' button is set as the quitting button you may use any
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        # After the loop release the cap object
+        vid.release()
+        # Destroy all the windows
         cv2.destroyAllWindows()
         print("Figura" + figura)
         print("Color" + color)

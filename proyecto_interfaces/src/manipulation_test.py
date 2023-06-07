@@ -30,7 +30,7 @@ class MinimalService(Node):
         Plataforma = request.platform
         otra = "platform"
         if(Plataforma == "platform_1"):
-            ObjetivoY = -2.0
+            ObjetivoY = 0.0
             otra = "platform_2"
         elif(Plataforma == "platform_2"):
             otra = "platform_1"
@@ -44,6 +44,7 @@ class MinimalService(Node):
         global ObjetivoY, ObjetivoX, ObjetivoZ
         msg_1 = String()
         msg_2 = String()
+        msg_3 = String()
          # Resolver el sistema de ecuaciones
         initial_guess = [0, 0]  # Aproximación inicial de las variables x e y
         solution = fsolve(self.equations, initial_guess)
@@ -76,6 +77,28 @@ class MinimalService(Node):
         msg_2.data = self.dar_formato(str(deg_q1), str(deg_q2), str(deg_q3), str(0))
         self.arduino.publish(msg_2)
 
+        time.sleep(30)
+        ObjetivoX = 15
+        if(Plataforma == "platform_1"):
+            ObjetivoY = 3.0
+            otra = "platform_2"
+        elif(Plataforma == "platform_2"):
+            otra = "platform_1"
+            ObjetivoY = 0.0
+
+        # Resolver el sistema de ecuaciones
+        initial_guess = [0, 0]  # Aproximación inicial de las variables x e y
+        solution = fsolve(self.equations, initial_guess)
+
+        # Imprimir las soluciones
+        x_solution, y_solution = solution
+        deg_q1 = round(90+math.atan(ObjetivoZ/ObjetivoY)*(180/math.pi))
+        deg_q2 = round(180-x_solution*(180/math.pi))
+        deg_q3 = round(90-y_solution*(180/math.pi))
+        #print("Solución para x:", 180-x_solution*(180/math.pi))
+        #print("Solución para y:", 90-y_solution*(180/math.pi))
+        msg_3.data = self.dar_formato(str(deg_q1), str(deg_q2), str(deg_q3), str(180))
+        self.arduino.publish(msg_3)
 
     def dar_formato(self, Q1, Q3, Q4, Q5):
         if(len(Q1)==1):
